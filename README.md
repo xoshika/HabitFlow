@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # HabitFlow - Habit Tracking System
 
 HabitFlow is a full-stack habit tracking app built with:
@@ -102,3 +103,7 @@ Frontend URL: shown by Vite (`http://localhost:5173` or next available port).
 
 - Theme preference is stored in browser local storage key `habitflow_theme`.
 - Logged-in session is stored in browser local storage key `habit_tracker_user`.
+=======
+# HabitFlow
+A simple habit tracking system for advanced database system subject
+>>>>>>> a07ae67578fc1d64f3f19e52d1c95bc51d951220
