@@ -30,15 +30,28 @@ function App() {
   return (
     <Box display="flex">
       <Sidebar user={user} onLogout={() => setUser(null)} />
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          background: (theme) =>
+            theme.palette.mode === "dark"
+              ? "linear-gradient(135deg, #05070d 0%, #0f172a 50%, #1e293b 100%)"
+              : "linear-gradient(135deg, #f8fbf8 0%, #f1f5f3 50%, #e8f0ed 100%)",
+          minHeight: "100vh",
+          backgroundAttachment: "fixed"
+        }}
+      >
         <Toolbar />
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<DashboardPage user={user} />} />
-          <Route path="/habits" element={<HabitsPage user={user} />} />
-          <Route path="/reports" element={<ReportsPage user={user} />} />
-          <Route path="/profile" element={<ProfilePage user={user} />} />
-        </Routes>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage user={user} />} />
+            <Route path="/habits" element={<HabitsPage user={user} />} />
+            <Route path="/reports" element={<ReportsPage user={user} />} />
+            <Route path="/profile" element={<ProfilePage user={user} />} />
+          </Routes>
+        </Box>
       </Box>
     </Box>
   );

@@ -9,20 +9,24 @@ import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
 import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
 import Chip from "@mui/material/Chip";
 import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import CardActions from "@mui/material/CardActions";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
+import Alert from "@mui/material/Alert";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import FitnessCenterIcon from "@mui/icons-material/FitnessCenter";
+import { useTheme } from "@mui/material/styles";
 
 const defaultForm = {
   name: "",
@@ -49,6 +53,7 @@ const HabitsPage = ({ user }) => {
   const [categorySaving, setCategorySaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const theme = useTheme();
 
   const loadCategories = async () => {
     const res = await axios.get("/api/habit-categories");
@@ -89,6 +94,7 @@ const HabitsPage = ({ user }) => {
     setEditingHabitId(null);
     setEditForm(defaultForm);
     setIsEditModalOpen(false);
+    setError(null);
   };
 
   const onSubmit = async (e) => {
@@ -222,95 +228,168 @@ const HabitsPage = ({ user }) => {
   };
 
   return (
-    <Paper sx={{ p: 3 }}>
-      <Stack spacing={2}>
-        <Typography variant="h5">Habits</Typography>
-        <Typography variant="body2" color="text.secondary">
-          Create and manage your habits, {user.name}.
+    <Stack spacing={3}>
+      {/* Header */}
+      <Box>
+        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, display: "flex", alignItems: "center", gap: 1 }}>
+          <FitnessCenterIcon sx={{ fontSize: 32 }} />
+          Your Habits
         </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Track and manage your daily habits to build a better routine
+        </Typography>
+      </Box>
 
-        <Grid container spacing={2} component="form" onSubmit={onSubmit}>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Habit Name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              required
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: "100%" }}>
+      {/* Create Habit Section */}
+      <Paper 
+        component="form" 
+        onSubmit={onSubmit}
+        sx={{ 
+          p: 3,
+          background: (theme) =>
+            theme.palette.mode === "dark"
+              ? "linear-gradient(135deg, rgba(15, 23, 42, 0.6) 0%, rgba(30, 41, 59, 0.3) 100%)"
+              : "linear-gradient(135deg, rgba(248, 251, 248, 0.8) 0%, rgba(226, 232, 240, 0.4) 100%)",
+          backdropFilter: "blur(10px)",
+          border: (theme) =>
+            theme.palette.mode === "dark"
+              ? "1px solid rgba(96, 165, 250, 0.1)"
+              : "1px solid rgba(37, 99, 235, 0.1)"
+        }}
+      >
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              Create New Habit
+            </Typography>
+          </Box>
+
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
+
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
               <TextField
-                label="Category"
-                value={form.category_id}
+                label="Habit Name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+                fullWidth
+                variant="outlined"
+                placeholder="e.g., Morning Exercise"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <Stack direction="row" spacing={1} alignItems="flex-end" sx={{ height: "100%" }}>
+                <TextField
+                  label="Category"
+                  value={form.category_id}
+                  onChange={(e) =>
+                    setForm({ ...form, category_id: e.target.value })
+                  }
+                  fullWidth
+                  select
+                >
+                  <MenuItem value="">None</MenuItem>
+                  {categories.map((cat) => (
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <Button
+                  type="button"
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={openCategoryModal}
+                  sx={{ flexShrink: 0, whiteSpace: "nowrap", height: 56 }}
+                >
+                  New
+                </Button>
+              </Stack>
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                label="Target per week"
+                type="number"
+                value={form.target_per_week}
                 onChange={(e) =>
-                  setForm({ ...form, category_id: e.target.value })
+                  setForm({ ...form, target_per_week: e.target.value })
                 }
                 fullWidth
-                select
+                placeholder="e.g., 5"
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Description"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                fullWidth
+                multiline
+                minRows={2}
+                placeholder="Add a description for your habit..."
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={form.is_active}
+                    onChange={(e) =>
+                      setForm({ ...form, is_active: e.target.checked })
+                    }
+                  />
+                }
+                label="Active"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} sx={{ display: "flex", justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
+              <Button 
+                type="submit" 
+                variant="contained" 
+                disabled={loading}
+                size="large"
+                sx={{ 
+                  background: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "linear-gradient(135deg, #86efac 0%, #22c55e 100%)"
+                      : "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "#0f172a" : "#ffffff",
+                  fontWeight: 600,
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "0 8px 16px rgba(134, 239, 172, 0.3)"
+                        : "0 8px 16px rgba(34, 197, 94, 0.3)"
+                  },
+                  transition: "all 0.3s ease"
+                }}
               >
-                <MenuItem value="">None</MenuItem>
-                {categories.map((cat) => (
-                  <MenuItem key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <Button
-                type="button"
-                variant="outlined"
-                startIcon={<AddIcon />}
-                onClick={openCategoryModal}
-                sx={{ flexShrink: 0, whiteSpace: "nowrap" }}
-              >
-                New
+                {loading ? "Saving..." : "Create Habit"}
               </Button>
-            </Stack>
+            </Grid>
           </Grid>
-          <Grid item xs={12} md={4}>
-            <TextField
-              label="Target per week"
-              type="number"
-              value={form.target_per_week}
-              onChange={(e) =>
-                setForm({ ...form, target_per_week: e.target.value })
-              }
-              fullWidth
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Description"
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-              fullWidth
-              multiline
-              minRows={2}
-            />
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.is_active}
-                  onChange={(e) =>
-                    setForm({ ...form, is_active: e.target.checked })
-                  }
-                />
-              }
-              label="Active"
-            />
-          </Grid>
-          <Grid item xs={12} md={6} sx={{ textAlign: { md: "right" } }}>
-            <Button type="submit" variant="contained" disabled={loading}>
-              {loading ? "Saving..." : "Create Habit"}
-            </Button>
-          </Grid>
-        </Grid>
+        </Stack>
+      </Paper>
 
-        <Divider />
+      <Divider sx={{ opacity: 0.3 }} />
 
+      {/* Filter Section */}
+      <Paper 
+        sx={{ 
+          p: 2.5,
+          background: (theme) =>
+            theme.palette.mode === "dark"
+              ? "rgba(15, 23, 42, 0.3)"
+              : "rgba(248, 251, 248, 0.5)"
+        }}
+      >
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
             <TextField
@@ -318,9 +397,10 @@ const HabitsPage = ({ user }) => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               fullWidth
+              placeholder="Search by name..."
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={6} md={3}>
             <TextField
               label="Category filter"
               value={filterCategoryId}
@@ -336,7 +416,7 @@ const HabitsPage = ({ user }) => {
               ))}
             </TextField>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={6} md={3}>
             <FormControlLabel
               control={
                 <Switch
@@ -348,86 +428,176 @@ const HabitsPage = ({ user }) => {
             />
           </Grid>
         </Grid>
+      </Paper>
 
-        {error && <Typography color="error">{error}</Typography>}
-
-        <List>
+      {/* Habits Grid */}
+      {habits.length === 0 ? (
+        <Paper 
+          sx={{ 
+            p: 4,
+            textAlign: "center",
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "rgba(15, 23, 42, 0.3)"
+                : "rgba(248, 251, 248, 0.5)",
+            border: (theme) =>
+              `2px dashed ${theme.palette.mode === "dark" ? "rgba(96, 165, 250, 0.2)" : "rgba(37, 99, 235, 0.2)"}`
+          }}
+        >
+          <CheckCircleIcon sx={{ fontSize: 48, opacity: 0.3, mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            No habits found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Create your first habit to get started on your journey!
+          </Typography>
+        </Paper>
+      ) : (
+        <Grid container spacing={2}>
           {habits.map((habit) => (
-            <ListItem
-              key={habit.id}
-              divider
-              sx={{
-                alignItems: "flex-start",
-                flexDirection: { xs: "column", md: "row" },
-                gap: 1
-              }}
-            >
-              <Box sx={{ flex: 1, width: "100%" }}>
-                <ListItemText
-                  primary={habit.name}
-                  secondary={
-                    <>
-                      {habit.description || "No description"}
-                      <br />
-                      Category: {habit.category || "None"} | Target:
-                      {" "}
-                      {habit.target_per_week ?? "N/A"} / week
-                    </>
-                  }
-                />
-              </Box>
-              <Box
+            <Grid item xs={12} sm={6} md={4} key={habit.id}>
+              <Card 
                 sx={{
+                  height: "100%",
                   display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  width: { xs: "100%", md: "auto" },
-                  justifyContent: { xs: "flex-end", md: "flex-start" },
-                  flexWrap: "wrap"
+                  flexDirection: "column",
+                  transition: "all 0.3s ease",
+                  background: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%)"
+                      : "linear-gradient(135deg, rgba(248, 251, 248, 0.8) 0%, rgba(226, 232, 240, 0.4) 100%)",
+                  border: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "1px solid rgba(96, 165, 250, 0.1)"
+                      : "1px solid rgba(37, 99, 235, 0.1)",
+                  "&:hover": {
+                    transform: "translateY(-8px)",
+                    boxShadow: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "0 12px 24px rgba(96, 165, 250, 0.2)"
+                        : "0 12px 24px rgba(37, 99, 235, 0.15)",
+                    borderColor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(96, 165, 250, 0.3)"
+                        : "rgba(37, 99, 235, 0.2)"
+                  }
                 }}
               >
-                {habit.is_active ? (
-                  <Chip label="Active" size="small" color="success" />
-                ) : (
-                  <Chip label="Inactive" size="small" />
-                )}
-                <IconButton
-                  aria-label="edit"
-                  onClick={() => startEdit(habit)}
-                >
-                  <EditIcon />
-                </IconButton>
-                <IconButton
-                  aria-label="delete"
-                  onClick={() => openDeleteModal(habit)}
-                >
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            </ListItem>
+                <CardContent sx={{ pb: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between", mb: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+                      {habit.name}
+                    </Typography>
+                    {habit.is_active ? (
+                      <Chip 
+                        label="Active" 
+                        size="small" 
+                        color="success"
+                        sx={{ ml: 1 }}
+                      />
+                    ) : (
+                      <Chip 
+                        label="Inactive" 
+                        size="small"
+                        sx={{ ml: 1 }}
+                      />
+                    )}
+                  </Box>
+                  {habit.description && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+                      {habit.description}
+                    </Typography>
+                  )}
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
+                    {habit.category && (
+                      <Chip 
+                        label={`${habit.category}`} 
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                    {habit.target_per_week && (
+                      <Chip 
+                        label={`${habit.target_per_week}x/week`} 
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Box>
+                </CardContent>
+                <CardActions sx={{ mt: "auto", justifyContent: "flex-end", pt: 1 }}>
+                  <IconButton
+                    aria-label="edit"
+                    onClick={() => startEdit(habit)}
+                    size="small"
+                    sx={{
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "rgba(96, 165, 250, 0.1)"
+                            : "rgba(37, 99, 235, 0.1)",
+                        color: (theme) =>
+                          theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb"
+                      }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    aria-label="delete"
+                    onClick={() => openDeleteModal(habit)}
+                    size="small"
+                    sx={{
+                      transition: "all 0.2s ease",
+                      "&:hover": {
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
+                        color: "#ef4444"
+                      }
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
           ))}
-          {habits.length === 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              No habits found.
-            </Typography>
-          )}
-        </List>
-      </Stack>
+        </Grid>
+      )}
+
+      {/* Edit Modal */}
       <Dialog
         open={isEditModalOpen}
         onClose={closeEditModal}
         fullWidth
         maxWidth="sm"
+        PaperProps={{
+          sx: {
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+                : "linear-gradient(135deg, #ffffff 0%, #f8fbf8 100%)"
+          }
+        }}
       >
-        <DialogTitle>Update Habit</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: "1.3rem" }}>
+          Update Habit
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          {error && (
+            <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <Stack spacing={2.5}>
             <TextField
               label="Habit Name"
               value={editForm.name}
               onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
               fullWidth
               required
+              variant="outlined"
             />
             <TextField
               label="Category"
@@ -462,7 +632,7 @@ const HabitsPage = ({ user }) => {
               }
               fullWidth
               multiline
-              minRows={2}
+              minRows={3}
             />
             <FormControlLabel
               control={
@@ -477,22 +647,50 @@ const HabitsPage = ({ user }) => {
             />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeEditModal}>Cancel</Button>
-          <Button variant="contained" onClick={onUpdateHabit} disabled={loading}>
+        <Divider />
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={closeEditModal} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={onUpdateHabit} 
+            disabled={loading}
+            sx={{
+              background: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "linear-gradient(135deg, #86efac 0%, #22c55e 100%)"
+                  : "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+              color: (theme) =>
+                theme.palette.mode === "dark" ? "#0f172a" : "#ffffff",
+              fontWeight: 600
+            }}
+          >
             {loading ? "Updating..." : "Update Habit"}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* Category Modal */}
       <Dialog
         open={isCategoryModalOpen}
         onClose={closeCategoryModal}
         fullWidth
         maxWidth="xs"
+        PaperProps={{
+          sx: {
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+                : "linear-gradient(135deg, #ffffff 0%, #f8fbf8 100%)"
+          }
+        }}
       >
-        <DialogTitle>New category</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          New Category
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
           <TextField
             autoFocus
             margin="dense"
@@ -506,10 +704,14 @@ const HabitsPage = ({ user }) => {
                 createCategory();
               }
             }}
+            variant="outlined"
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeCategoryModal}>Cancel</Button>
+        <Divider />
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={closeCategoryModal} variant="outlined">
+            Cancel
+          </Button>
           <Button
             variant="contained"
             onClick={createCategory}
@@ -520,30 +722,49 @@ const HabitsPage = ({ user }) => {
         </DialogActions>
       </Dialog>
 
+      {/* Delete Modal */}
       <Dialog
         open={isDeleteModalOpen}
         onClose={closeDeleteModal}
         fullWidth
         maxWidth="xs"
+        PaperProps={{
+          sx: {
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)"
+                : "linear-gradient(135deg, #ffffff 0%, #f8fbf8 100%)"
+          }
+        }}
       >
-        <DialogTitle>Delete habit?</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ fontWeight: 700, color: "#ef4444" }}>
+          Delete Habit?
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
           <Typography variant="body2" color="text.secondary">
             This will permanently delete
             {" "}
-            <strong>{deleteTarget?.name || "this habit"}</strong>
+            <strong>"{deleteTarget?.name || "this habit"}"</strong>
             {" "}
             and its related check-ins.
           </Typography>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDeleteModal}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={deleteHabit}>
+        <Divider />
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={closeDeleteModal} variant="outlined">
+            Cancel
+          </Button>
+          <Button 
+            color="error" 
+            variant="contained" 
+            onClick={deleteHabit}
+          >
             Delete
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </Stack>
   );
 };
 

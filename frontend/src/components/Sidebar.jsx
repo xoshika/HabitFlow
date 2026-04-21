@@ -22,7 +22,7 @@ import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import { useColorMode } from "../ColorModeContext";
 
-const drawerWidth = 260;
+const drawerWidth = 280;
 
 const Sidebar = ({ user, onLogout }) => {
   const location = useLocation();
@@ -42,13 +42,30 @@ const Sidebar = ({ user, onLogout }) => {
         sx={{
           zIndex: (theme) => theme.zIndex.drawer + 1,
           backgroundColor: (theme) =>
-            theme.palette.mode === "dark" ? "#05070d" : "#ffffff",
+            theme.palette.mode === "dark" 
+              ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" 
+              : "linear-gradient(135deg, #ffffff 0%, #f8fbf8 100%)",
           color: (theme) => theme.palette.text.primary,
-          boxShadow: "none"
+          boxShadow: (theme) =>
+            theme.palette.mode === "dark"
+              ? "0 2px 8px rgba(0, 0, 0, 0.4)"
+              : "0 2px 8px rgba(0, 0, 0, 0.1)",
+          backdropFilter: "blur(10px)"
         }}
       >
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 500 }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              flexGrow: 1, 
+              fontWeight: 700,
+              fontSize: "1.4rem",
+              color: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "#86efac"
+                  : "#ffffff"
+            }}
+          >
             HabitFlow
           </Typography>
           <Tooltip title={mode === "dark" ? "Light mode" : "Dark mode"}>
@@ -56,14 +73,17 @@ const Sidebar = ({ user, onLogout }) => {
               color="inherit"
               onClick={toggleColorMode}
               aria-label="toggle light or dark mode"
-              sx={{ mr: 1 }}
+              sx={{ 
+                mr: 2,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.1)"
+                }
+              }}
             >
               {mode === "dark" ? <LightModeIcon /> : <DarkModeIcon />}
             </IconButton>
           </Tooltip>
-          <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
-            {user.name.charAt(0).toUpperCase()}
-          </Avatar>
         </Toolbar>
       </AppBar>
       <Drawer
@@ -75,50 +95,149 @@ const Sidebar = ({ user, onLogout }) => {
             width: drawerWidth,
             boxSizing: "border-box",
             backgroundColor: (theme) =>
-              theme.palette.mode === "dark" ? "#0f172a" : "#ffffff",
+              theme.palette.mode === "dark" ? "#0f172a" : "#f8fbf8",
             borderRight: (theme) =>
               theme.palette.mode === "dark"
                 ? "1px solid #1e293b"
-                : "1px solid #d5e6d6"
+                : "1px solid #e2e8f0",
+            overflow: "hidden"
           }
         }}
       >
         <Toolbar />
-        <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
-          <Avatar sx={{ width: 40, height: 40, mr: 2 }}>
+        <Box 
+          sx={{ 
+            p: 3, 
+            display: "flex", 
+            alignItems: "center",
+            background: (theme) =>
+              theme.palette.mode === "dark"
+                ? "linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.4) 100%)"
+                : "linear-gradient(135deg, rgba(248, 251, 248, 0.8) 0%, rgba(226, 232, 240, 0.4) 100%)",
+            borderRadius: "12px",
+            margin: 2,
+            border: (theme) =>
+              theme.palette.mode === "dark"
+                ? "1px solid #1e293b"
+                : "1px solid #e2e8f0"
+          }}
+        >
+          <Avatar 
+            sx={{ 
+              width: 48, 
+              height: 48, 
+              mr: 2,
+              background: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "linear-gradient(135deg, #86efac 0%, #22c55e 100%)"
+                  : "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+              fontWeight: 700,
+              fontSize: "1.3rem"
+            }}
+          >
             {user.name.charAt(0).toUpperCase()}
           </Avatar>
-          <Box>
-            <Typography variant="subtitle1">{user.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {user.email}
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+              {user.name}
+            </Typography>
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ 
+                opacity: 0.7,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                maxWidth: "100%"
+              }}
+            >
+      
             </Typography>
           </Box>
         </Box>
-        <Divider />
-        <List>
+        <Divider sx={{ opacity: 0.3 }} />
+        <List sx={{ px: 1, py: 2 }}>
           {items.map((item) => (
-            <ListItem key={item.to} disablePadding>
+            <ListItem key={item.to} disablePadding sx={{ mb: 1 }}>
               <ListItemButton
                 component={RouterLink}
                 to={item.to}
                 selected={location.pathname === item.to}
+                sx={{
+                  borderRadius: "8px",
+                  mx: 1,
+                  transition: "all 0.3s ease",
+                  "&.Mui-selected": {
+                    background: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "linear-gradient(135deg, rgba(134, 239, 172, 0.2) 0%, rgba(34, 197, 94, 0.2) 100%)"
+                        : "linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(22, 163, 74, 0.1) 100%)",
+                    color: (theme) =>
+                      theme.palette.mode === "dark" ? "#86efac" : "#16a34a",
+                    fontWeight: 600,
+                    borderLeft: (theme) =>
+                      `4px solid ${theme.palette.mode === "dark" ? "#22c55e" : "#16a34a"}`,
+                    paddingLeft: "12px !important"
+                  },
+                  "&:hover": {
+                    background: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(134, 239, 172, 0.1)"
+                        : "rgba(34, 197, 94, 0.05)",
+                    transform: "translateX(4px)"
+                  },
+                  "& .MuiListItemIcon-root": {
+                    color: (theme) =>
+                      location.pathname === item.to
+                        ? theme.palette.mode === "dark" ? "#86efac" : "#16a34a"
+                        : "inherit",
+                    minWidth: 40
+                  }
+                }}
               >
                 <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.label} />
+                <ListItemText 
+                  primary={item.label}
+                  primaryTypographyProps={{ fontSize: "0.95rem" }}
+                />
               </ListItemButton>
             </ListItem>
           ))}
         </List>
         <Box sx={{ flexGrow: 1 }} />
-        <Divider />
-        <List>
+        <Divider sx={{ opacity: 0.3 }} />
+        <List sx={{ px: 1, py: 2 }}>
           <ListItem disablePadding>
-            <ListItemButton onClick={onLogout}>
+            <ListItemButton
+              onClick={onLogout}
+              sx={{
+                borderRadius: "8px",
+                mx: 1,
+                transition: "all 0.3s ease",
+                color: (theme) =>
+                  theme.palette.mode === "dark" ? "#fb7185" : "#dc2626",
+                "&:hover": {
+                  background: (theme) =>
+                    theme.palette.mode === "dark"
+                      ? "rgba(251, 113, 133, 0.1)"
+                      : "rgba(220, 38, 38, 0.05)",
+                  transform: "translateX(4px)"
+                },
+                "& .MuiListItemIcon-root": {
+                  color: (theme) =>
+                    theme.palette.mode === "dark" ? "#fb7185" : "#dc2626",
+                  minWidth: 40
+                }
+              }}
+            >
               <ListItemIcon>
                 <LogoutIcon />
               </ListItemIcon>
-              <ListItemText primary="Logout" />
+              <ListItemText 
+                primary="Logout"
+                primaryTypographyProps={{ fontSize: "0.95rem" }}
+              />
             </ListItemButton>
           </ListItem>
         </List>

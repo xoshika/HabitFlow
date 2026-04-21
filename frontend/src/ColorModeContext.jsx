@@ -33,14 +33,14 @@ export function ColorModeProvider({ children }) {
           mode,
           ...(mode === "light"
             ? {
-                primary: { main: "#2e7d32" },
-                secondary: { main: "#66bb6a" },
+                primary: { main: "#22c55e" },
+                secondary: { main: "#86efac" },
                 background: { default: "#f8fbf8", paper: "#ffffff" },
                 text: { primary: "#1d2b1f", secondary: "#4b6350" }
               }
             : {
-                primary: { main: "#2563eb" },
-                secondary: { main: "#60a5fa" },
+                primary: { main: "#22c55e" },
+                secondary: { main: "#86efac" },
                 background: { default: "#05070d", paper: "#0f172a" },
                 text: { primary: "#e2e8f0", secondary: "#94a3b8" }
               })

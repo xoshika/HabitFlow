@@ -45,12 +45,12 @@ const LoginPage = ({ onLogin }) => {
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 500 }}>
           {authMode === "signup"
             ? "Create your account"
-            : "Sign in to Habit Tracker"}
+            : "HabitFlow"}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           {authMode === "signup"
             ? "Register to create and manage your own habits."
-            : "Use the demo credentials pre-filled below."}
+            : "Welcome back! Please sign in to continue tracking your habits."}
         </Typography>
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2}>
