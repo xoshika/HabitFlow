@@ -14,14 +14,19 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 const DashboardPage = ({ user }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const loadSummary = async () => {
     setLoading(true);
+    setError(null);
     try {
       const res = await axios.get("/api/dashboard/summary", {
         params: { user_id: user.id }
       });
       setData(res.data);
+    } catch (err) {
+      console.error("Failed to load dashboard", err);
+      setError(err?.response?.data?.error || err.message || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
@@ -35,6 +40,7 @@ const DashboardPage = ({ user }) => {
       await loadSummary();
     } catch (err) {
       console.error("Failed to log check-in", err);
+      setError("Failed to log check-in");
     }
   };
 
@@ -52,6 +58,20 @@ const DashboardPage = ({ user }) => {
           </Button>
         </Stack>
       </Grid>
+      {error && (
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2, backgroundColor: "#ffebee" }}>
+            <Typography color="error">{error}</Typography>
+          </Paper>
+        </Grid>
+      )}
+      {loading && !data && (
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Typography color="text.secondary">Loading dashboard...</Typography>
+          </Paper>
+        </Grid>
+      )}
       <Grid item xs={12} md={4}>
         <Paper sx={{ p: 2 }}>
           <Typography variant="subtitle2" color="text.secondary">

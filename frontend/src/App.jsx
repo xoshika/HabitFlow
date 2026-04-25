@@ -50,6 +50,7 @@ function App() {
             <Route path="/habits" element={<HabitsPage user={user} />} />
             <Route path="/reports" element={<ReportsPage user={user} />} />
             <Route path="/profile" element={<ProfilePage user={user} />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Box>
       </Box>
