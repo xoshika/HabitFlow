@@ -1,13 +1,33 @@
 {
-  "version": 2,
-  "rewrites": [
+  "version": 3,
+  "name": "habitflow",
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/dist",
+  "framework": "vite",
+  "builds": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.py"
+      "src": "frontend/package.json",
+      "use": "@vercel/node",
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
-      "source": "/(.*)",
-      "destination": "/frontend/dist/$1"
+      "src": "api/index.py",
+      "use": "@vercel/python"
     }
-  ]
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/dist/$1"
+    }
+  ],
+  "env": {
+    "DATABASE_URL": "@database_url"
+  }
 }
