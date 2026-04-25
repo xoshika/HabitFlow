@@ -18,10 +18,6 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/habit_tracker.db
 app = Flask(__name__)
 CORS(app)
 
-@app.get("/")
-def read_root():
-    return {"Python": "on Vercel"}
-
 class Database:
     def __init__(self, url):
         self.url = url
