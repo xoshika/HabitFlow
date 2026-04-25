@@ -8,6 +8,8 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
+import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const DashboardPage = ({ user }) => {
   const [data, setData] = useState(null);
@@ -22,6 +24,17 @@ const DashboardPage = ({ user }) => {
       setData(res.data);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckin = async (habitId) => {
+    try {
+      await axios.post(`/api/habits/${habitId}/checkins`, {
+        entry_date: new Date().toISOString().split("T")[0]
+      });
+      await loadSummary();
+    } catch (err) {
+      console.error("Failed to log check-in", err);
     }
   };
 
@@ -105,6 +118,24 @@ const DashboardPage = ({ user }) => {
                       : `Actual ${row.actual_per_week}/week`
                   }
                 />
+                <ListItemSecondaryAction>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={() => handleCheckin(row.habit_id)}
+                    sx={{
+                      borderRadius: "20px",
+                      textTransform: "none",
+                      background: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)"
+                          : "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                    }}
+                  >
+                    Complete
+                  </Button>
+                </ListItemSecondaryAction>
               </ListItem>
             )) ?? (
               <Typography variant="body2" color="text.secondary">

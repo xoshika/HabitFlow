@@ -184,6 +184,17 @@ const HabitsPage = ({ user }) => {
     setDeleteTarget(null);
     setIsDeleteModalOpen(false);
   };
+  const handleCheckin = async (habitId) => {
+    try {
+      await axios.post(`/api/habits/${habitId}/checkins`, {
+        entry_date: new Date().toISOString().split("T")[0]
+      });
+      // Optionally reload habits or show success
+      await loadHabits();
+    } catch (err) {
+      setError("Failed to log check-in");
+    }
+  };
 
   const deleteHabit = async () => {
     if (!deleteTarget) return;
@@ -525,39 +536,64 @@ const HabitsPage = ({ user }) => {
                     )}
                   </Box>
                 </CardContent>
-                <CardActions sx={{ mt: "auto", justifyContent: "flex-end", pt: 1 }}>
-                  <IconButton
-                    aria-label="edit"
-                    onClick={() => startEdit(habit)}
+                <CardActions sx={{ mt: "auto", justifyContent: "space-between", pt: 1, px: 2, pb: 2 }}>
+                  <Button
+                    variant="contained"
                     size="small"
+                    startIcon={<CheckCircleIcon />}
+                    onClick={() => handleCheckin(habit.id)}
+                    disabled={!habit.is_active}
                     sx={{
-                      transition: "all 0.2s ease",
+                      borderRadius: "20px",
+                      textTransform: "none",
+                      fontWeight: 600,
+                      background: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)"
+                          : "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                      boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
                       "&:hover": {
-                        backgroundColor: (theme) =>
-                          theme.palette.mode === "dark"
-                            ? "rgba(96, 165, 250, 0.1)"
-                            : "rgba(37, 99, 235, 0.1)",
-                        color: (theme) =>
-                          theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb"
+                        transform: "scale(1.05)",
+                        boxShadow: "0 6px 16px rgba(37, 99, 235, 0.3)"
                       }
                     }}
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    aria-label="delete"
-                    onClick={() => openDeleteModal(habit)}
-                    size="small"
-                    sx={{
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: "rgba(239, 68, 68, 0.1)",
-                        color: "#ef4444"
-                      }
-                    }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                    Complete
+                  </Button>
+                  <Box>
+                    <IconButton
+                      aria-label="edit"
+                      onClick={() => startEdit(habit)}
+                      size="small"
+                      sx={{
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: (theme) =>
+                            theme.palette.mode === "dark"
+                              ? "rgba(96, 165, 250, 0.1)"
+                              : "rgba(37, 99, 235, 0.1)",
+                          color: (theme) =>
+                            theme.palette.mode === "dark" ? "#60a5fa" : "#2563eb"
+                        }
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      aria-label="delete"
+                      onClick={() => openDeleteModal(habit)}
+                      size="small"
+                      sx={{
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: "rgba(239, 68, 68, 0.1)",
+                          color: "#ef4444"
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
                 </CardActions>
               </Card>
             </Grid>

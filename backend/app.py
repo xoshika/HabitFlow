@@ -1,35 +1,108 @@
+import os
 from datetime import datetime, date
+from pathlib import Path
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
-from pathlib import Path
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "habit_tracker.db"
-
-
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    with get_db_connection() as conn:
-        with conn:
-            conn.executescript(
-                (BASE_DIR / "schema.sql").read_text(encoding="utf-8")
-            )
-
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/habit_tracker.db")
 
 app = Flask(__name__)
 CORS(app)
 
+class Database:
+    def __init__(self, url):
+        self.url = url
+        self.is_pg = url.startswith("postgresql://") or url.startswith("postgres://")
 
-if not DB_PATH.exists():
-    init_db()
+    def get_connection(self):
+        if self.is_pg:
+            conn = psycopg2.connect(self.url, cursor_factory=RealDictCursor)
+            conn.autocommit = True
+            return conn
+        else:
+            db_path = self.url.replace("sqlite:///", "")
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            return conn
 
+    def execute(self, conn, query, params=None):
+        if params is None:
+            params = []
+        
+        # Dialect adjustments
+        if self.is_pg:
+            query = query.replace("?", "%s")
+            # SQLite specific date functions to PG
+            query = query.replace("date('now', '-7 day')", "CURRENT_DATE - INTERVAL '7 days'")
+            query = query.replace("date('now')", "CURRENT_DATE")
+            query = query.replace("datetime('now')", "CURRENT_TIMESTAMP")
+        else:
+            # PG specific to SQLite if any (e.g. INTERVAL)
+            # For now we assume queries are written in SQLite-ish and adjusted for PG
+            pass
+
+        cur = conn.cursor() if self.is_pg else conn.cursor()
+        cur.execute(query, params)
+        return cur
+
+    def fetchall(self, cur):
+        if self.is_pg:
+            return cur.fetchall()
+        else:
+            return cur.fetchall()
+
+    def fetchone(self, cur):
+        if self.is_pg:
+            return cur.fetchone()
+        else:
+            return cur.fetchone()
+
+    def get_lastrowid(self, cur):
+        if self.is_pg:
+            # This requires the query to have RETURNING id, 
+            # or we can try to get it if we know the table.
+            # For simplicity, we'll try to use cur.fetchone() if it was an INSERT ... RETURNING
+            try:
+                row = cur.fetchone()
+                return row['id'] if row else None
+            except:
+                return None
+        else:
+            return cur.lastrowid
+
+db = Database(DATABASE_URL)
+
+def init_db():
+    if not db.is_pg:
+        db_path = Path(DATABASE_URL.replace("sqlite:///", ""))
+        if not db_path.exists():
+            with db.get_connection() as conn:
+                schema_path = BASE_DIR / "schema.sql"
+                with open(schema_path, "r", encoding="utf-8") as f:
+                    conn.executescript(f.read())
+    else:
+        # For PG, we might want to run schema_pg.sql if tables don't exist
+        # But usually in production we use migrations.
+        # For this prototype, we'll just check if a table exists.
+        with db.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+            exists = cur.fetchone()['exists']
+            if not exists:
+                schema_path = BASE_DIR / "schema_pg.sql"
+                with open(schema_path, "r", encoding="utf-8") as f:
+                    cur.execute(f.read())
+
+init_db()
 
 @app.post("/api/auth/login")
 def login():
@@ -37,12 +110,15 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    with get_db_connection() as conn:
-        cur = conn.execute(
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, 
             "SELECT id, name, email FROM users WHERE email = ? AND password = ?",
             (email, password),
         )
-        user = cur.fetchone()
+        user = db.fetchone(cur)
+    finally:
+        conn.close()
 
     if not user:
         return jsonify({"error": "Invalid credentials"}), 401
@@ -68,33 +144,35 @@ def signup():
     if not name or not email or not password:
         return jsonify({"error": "Name, email, and password are required"}), 400
 
-    with get_db_connection() as conn:
-        existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?",
-            (email,),
-        ).fetchone()
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, "SELECT id FROM users WHERE email = ?", (email,))
+        existing = db.fetchone(cur)
         if existing:
             return jsonify({"error": "Email is already registered"}), 409
 
-        cur = conn.execute(
-            """
-            INSERT INTO users (name, email, password)
-            VALUES (?, ?, ?)
-            """,
-            (name, email, password),
-        )
-        conn.commit()
-        user_id = cur.lastrowid
+        sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)"
+        if db.is_pg:
+            sql += " RETURNING id"
+        
+        cur = db.execute(conn, sql, (name, email, password))
+        if not db.is_pg:
+            conn.commit()
+        user_id = db.get_lastrowid(cur)
+    finally:
+        conn.close()
 
     return jsonify({"user": {"id": user_id, "name": name, "email": email}}), 201
 
 
 @app.get("/api/habit-categories")
 def list_habit_categories():
-    with get_db_connection() as conn:
-        rows = conn.execute(
-            "SELECT id, name FROM habit_categories ORDER BY name ASC"
-        ).fetchall()
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, "SELECT id, name FROM habit_categories ORDER BY name ASC")
+        rows = db.fetchall(cur)
+    finally:
+        conn.close()
 
     return jsonify([{"id": r["id"], "name": r["name"]} for r in rows])
 
@@ -106,34 +184,38 @@ def create_habit_category():
     if not name:
         return jsonify({"error": "Category name is required"}), 400
 
-    with get_db_connection() as conn:
-        try:
-            cur = conn.execute(
-                "INSERT INTO habit_categories (name) VALUES (?)",
-                (name,),
-            )
+    conn = db.get_connection()
+    try:
+        sql = "INSERT INTO habit_categories (name) VALUES (?)"
+        if db.is_pg:
+            sql += " RETURNING id"
+        
+        cur = db.execute(conn, sql, (name,))
+        if not db.is_pg:
             conn.commit()
-            category_id = cur.lastrowid
-        except sqlite3.IntegrityError:
-            return jsonify({"error": "A category with this name already exists"}), 409
+        category_id = db.get_lastrowid(cur)
+    except (sqlite3.IntegrityError, psycopg2.IntegrityError):
+        return jsonify({"error": "A category with this name already exists"}), 409
+    finally:
+        conn.close()
 
     return jsonify({"id": category_id, "name": name}), 201
 
 
 @app.get("/api/profile/<int:user_id>")
 def get_profile(user_id: int):
-    with get_db_connection() as conn:
-        user = conn.execute(
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, 
             "SELECT id, name, email, created_at FROM users WHERE id = ?",
             (user_id,),
-        ).fetchone()
+        )
+        user = db.fetchone(cur)
 
         if not user:
             return jsonify({"error": "User not found"}), 404
 
-        # Example of aggregation + subquery in profile stats
-        stats = conn.execute(
-            """
+        stats_query = """
             SELECT
                 (SELECT COUNT(*) FROM habits h WHERE h.user_id = u.id) AS total_habits,
                 (SELECT COUNT(*) FROM habit_entries e
@@ -142,9 +224,11 @@ def get_profile(user_id: int):
                 ) AS total_checkins
             FROM users u
             WHERE u.id = ?
-            """,
-            (user_id,),
-        ).fetchone()
+        """
+        cur = db.execute(conn, stats_query, (user_id,))
+        stats = db.fetchone(cur)
+    finally:
+        conn.close()
 
     return jsonify(
         {
@@ -193,8 +277,12 @@ def list_habits():
 
     query += " ORDER BY h.created_at DESC, h.id DESC"
 
-    with get_db_connection() as conn:
-        rows = conn.execute(query, params).fetchall()
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, query, params)
+        rows = db.fetchall(cur)
+    finally:
+        conn.close()
 
     habits = [
         {
@@ -222,19 +310,20 @@ def create_habit():
     target_per_week = data.get("target_per_week")
     is_active = data.get("is_active", True)
 
-    with get_db_connection() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            """
+    conn = db.get_connection()
+    try:
+        sql = """
             INSERT INTO habits (user_id, name, description, category_id, is_active)
             VALUES (?, ?, ?, ?, ?)
-            """,
-            (user_id, name, description, category_id, int(bool(is_active))),
-        )
-        habit_id = cur.lastrowid
+        """
+        if db.is_pg:
+            sql += " RETURNING id"
+        
+        cur = db.execute(conn, sql, (user_id, name, description, category_id, int(bool(is_active))))
+        habit_id = db.get_lastrowid(cur)
 
         if target_per_week is not None:
-            cur.execute(
+            db.execute(conn, 
                 """
                 INSERT INTO habit_goals (habit_id, target_per_week)
                 VALUES (?, ?)
@@ -242,7 +331,10 @@ def create_habit():
                 (habit_id, target_per_week),
             )
 
-        conn.commit()
+        if not db.is_pg:
+            conn.commit()
+    finally:
+        conn.close()
 
     return jsonify({"id": habit_id}), 201
 
@@ -256,8 +348,9 @@ def update_habit(habit_id: int):
     is_active = data.get("is_active")
     target_per_week = data.get("target_per_week")
 
-    with get_db_connection() as conn:
-        conn.execute(
+    conn = db.get_connection()
+    try:
+        db.execute(conn, 
             """
             UPDATE habits
             SET name = ?, description = ?, category_id = ?, is_active = ?
@@ -267,25 +360,42 @@ def update_habit(habit_id: int):
         )
 
         if target_per_week is not None:
-            conn.execute(
-                """
-                INSERT INTO habit_goals (habit_id, target_per_week)
-                VALUES (?, ?)
-                ON CONFLICT(habit_id) DO UPDATE SET target_per_week = excluded.target_per_week
-                """,
-                (habit_id, target_per_week),
-            )
+            if db.is_pg:
+                db.execute(conn, 
+                    """
+                    INSERT INTO habit_goals (habit_id, target_per_week)
+                    VALUES (?, ?)
+                    ON CONFLICT(habit_id) DO UPDATE SET target_per_week = EXCLUDED.target_per_week
+                    """,
+                    (habit_id, target_per_week),
+                )
+            else:
+                db.execute(conn, 
+                    """
+                    INSERT INTO habit_goals (habit_id, target_per_week)
+                    VALUES (?, ?)
+                    ON CONFLICT(habit_id) DO UPDATE SET target_per_week = excluded.target_per_week
+                    """,
+                    (habit_id, target_per_week),
+                )
 
-        conn.commit()
+        if not db.is_pg:
+            conn.commit()
+    finally:
+        conn.close()
 
     return jsonify({"status": "ok"})
 
 
 @app.delete("/api/habits/<int:habit_id>")
 def delete_habit(habit_id: int):
-    with get_db_connection() as conn:
-        conn.execute("DELETE FROM habits WHERE id = ?", (habit_id,))
-        conn.commit()
+    conn = db.get_connection()
+    try:
+        db.execute(conn, "DELETE FROM habits WHERE id = ?", (habit_id,))
+        if not db.is_pg:
+            conn.commit()
+    finally:
+        conn.close()
     return jsonify({"status": "deleted"})
 
 
@@ -297,15 +407,19 @@ def create_checkin(habit_id: int):
         date.fromisoformat(entry_date_str) if entry_date_str else date.today()
     )
 
-    with get_db_connection() as conn:
-        conn.execute(
+    conn = db.get_connection()
+    try:
+        db.execute(conn, 
             """
             INSERT INTO habit_entries (habit_id, entry_date)
             VALUES (?, ?)
             """,
             (habit_id, entry_date.isoformat()),
         )
-        conn.commit()
+        if not db.is_pg:
+            conn.commit()
+    finally:
+        conn.close()
 
     return jsonify({"status": "ok"})
 
@@ -314,10 +428,10 @@ def create_checkin(habit_id: int):
 def dashboard_summary():
     user_id = request.args.get("user_id", type=int)
 
-    with get_db_connection() as conn:
+    conn = db.get_connection()
+    try:
         # Aggregations: COUNT, SUM, MAX, AVG
-        totals = conn.execute(
-            """
+        totals_query = """
             SELECT
                 COUNT(DISTINCT h.id) AS total_habits,
                 SUM(CASE WHEN h.is_active = 1 THEN 1 ELSE 0 END) AS active_habits,
@@ -328,13 +442,12 @@ def dashboard_summary():
             LEFT JOIN habit_entries e ON e.habit_id = h.id
             LEFT JOIN habit_goals g ON g.habit_id = h.id
             WHERE h.user_id = ?
-            """,
-            (user_id,),
-        ).fetchone()
+        """
+        cur = db.execute(conn, totals_query, (user_id,))
+        totals = db.fetchone(cur)
 
         # CTE example: weekly completion rate per habit
-        weekly = conn.execute(
-            """
+        weekly_query = """
             WITH recent_week AS (
                 SELECT
                     h.id AS habit_id,
@@ -346,7 +459,7 @@ def dashboard_summary():
                 LEFT JOIN habit_entries e ON e.habit_id = h.id
                     AND e.entry_date >= date('now', '-7 day')
                 WHERE h.user_id = ?
-                GROUP BY h.id
+                GROUP BY h.id, h.name, g.target_per_week
             )
             SELECT
                 habit_id,
@@ -358,9 +471,11 @@ def dashboard_summary():
                     ELSE ROUND(100.0 * actual_per_week / target_per_week, 1)
                 END AS completion_rate
             FROM recent_week
-            """,
-            (user_id,),
-        ).fetchall()
+        """
+        cur = db.execute(conn, weekly_query, (user_id,))
+        weekly = db.fetchall(cur)
+    finally:
+        conn.close()
 
     return jsonify(
         {
@@ -368,10 +483,10 @@ def dashboard_summary():
                 "total_habits": totals["total_habits"],
                 "active_habits": totals["active_habits"] or 0,
                 "total_checkins": totals["total_checkins"],
-                "avg_target_per_week": round(totals["avg_target_per_week"], 1)
+                "avg_target_per_week": round(float(totals["avg_target_per_week"]), 1)
                 if totals["avg_target_per_week"] is not None
                 else None,
-                "last_checkin_date": totals["last_checkin_date"],
+                "last_checkin_date": totals["last_checkin_date"].isoformat() if isinstance(totals["last_checkin_date"], (date, datetime)) else totals["last_checkin_date"],
             },
             "weekly": [
                 {
@@ -379,7 +494,7 @@ def dashboard_summary():
                     "name": r["name"],
                     "target_per_week": r["target_per_week"],
                     "actual_per_week": r["actual_per_week"],
-                    "completion_rate": r["completion_rate"],
+                    "completion_rate": float(r["completion_rate"]) if r["completion_rate"] is not None else None,
                 }
                 for r in weekly
             ],
@@ -442,39 +557,57 @@ def reports_habits():
         params.append(1 if is_active == "true" else 0)
 
     query += """
-            GROUP BY h.id
+            GROUP BY h.id, h.name, h.is_active, c.name, g.target_per_week
             ORDER BY total_checkins DESC, h.name ASC
     """
 
-    with get_db_connection() as conn:
-        # Join across 3+ tables with aggregations and a subquery
-        rows = conn.execute(query, params).fetchall()
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, query, params)
+        rows = db.fetchall(cur)
+    finally:
+        conn.close()
 
-    report = [
-        {
+    report = []
+    for r in rows:
+        first_checkin = r["first_checkin"]
+        last_checkin = r["last_checkin"]
+        
+        # Handle date objects from PG or strings from SQLite
+        if isinstance(first_checkin, (date, datetime)):
+            first_date = first_checkin
+        elif first_checkin:
+            first_date = datetime.fromisoformat(first_checkin)
+        else:
+            first_date = None
+
+        if isinstance(last_checkin, (date, datetime)):
+            last_date = last_checkin
+        elif last_checkin:
+            last_date = datetime.fromisoformat(last_checkin)
+        else:
+            last_date = None
+
+        period_days = (last_date - first_date).days + 1 if first_date and last_date else None
+        
+        report.append({
             "habit_id": r["habit_id"],
             "habit_name": r["habit_name"],
             "is_active": bool(r["is_active"]),
             "category_name": r["category_name"],
             "target_per_week": r["target_per_week"],
             "total_checkins": r["total_checkins"],
-            "first_checkin": r["first_checkin"],
-            "last_checkin": r["last_checkin"],
+            "first_checkin": first_date.isoformat() if first_date else None,
+            "last_checkin": last_date.isoformat() if last_date else None,
             "checkins_last_7_days": r["checkins_last_7_days"],
-            "period_days": (
-                (datetime.fromisoformat(r["last_checkin"]) - datetime.fromisoformat(r["first_checkin"])).days + 1
-                if r["first_checkin"] and r["last_checkin"]
-                else None
-            ),
+            "period_days": period_days,
             "completion_rate": (
                 round(100.0 * r["checkins_last_7_days"] / r["target_per_week"], 1)
                 if r["target_per_week"] not in (None, 0)
                 else None
             ),
-            "avg_per_day": r["avg_per_day"],
-        }
-        for r in rows
-    ]
+            "avg_per_day": float(r["avg_per_day"]) if r["avg_per_day"] is not None else None,
+        })
 
     return jsonify(report)
 
