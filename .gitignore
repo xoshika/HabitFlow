@@ -3,5 +3,4 @@ frontend/node_modules/
 .env
 dist/
 build/
-.vercel
 .env*.local
