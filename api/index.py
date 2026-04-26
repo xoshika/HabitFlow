@@ -115,6 +115,23 @@ def init_db():
 
 init_db()
 
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "status": "healthy",
+        "database": "connected" if db.is_pg else "sqlite (local)",
+        "env": "production" if os.getenv("VERCEL") else "development"
+    })
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP errors
+    if hasattr(e, "code"):
+        return jsonify({"error": str(e)}), e.code
+    # Handle non-HTTP errors
+    print(f"Unhandled Exception: {e}")
+    return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+
 @app.post("/api/auth/login")
 def login():
     data = request.get_json() or {}
