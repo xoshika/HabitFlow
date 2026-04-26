@@ -12,20 +12,26 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Vercel path handling
 BASE_DIR = Path(__file__).resolve().parent
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/habit_tracker.db")
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = Flask(__name__)
 CORS(app)
 
 class Database:
     def __init__(self, url):
+        if not url:
+            # Fallback for local dev if DATABASE_URL is missing
+            url = f"sqlite:///{BASE_DIR}/habit_tracker.db"
         self.url = url
         self.is_pg = url.startswith("postgresql://") or url.startswith("postgres://")
 
     def get_connection(self):
         if self.is_pg:
-            conn = psycopg2.connect(self.url, cursor_factory=RealDictCursor)
+            # Fix for Render/Neon postgres URLs that start with postgres://
+            updated_url = self.url.replace("postgres://", "postgresql://", 1)
+            conn = psycopg2.connect(updated_url, cursor_factory=RealDictCursor)
             conn.autocommit = True
             return conn
         else:
@@ -83,24 +89,29 @@ db = Database(DATABASE_URL)
 
 def init_db():
     if not db.is_pg:
-        db_path = Path(DATABASE_URL.replace("sqlite:///", ""))
+        db_path = Path(db.url.replace("sqlite:///", ""))
         if not db_path.exists():
             with db.get_connection() as conn:
                 schema_path = BASE_DIR / "schema.sql"
-                with open(schema_path, "r", encoding="utf-8") as f:
-                    conn.executescript(f.read())
+                if schema_path.exists():
+                    with open(schema_path, "r", encoding="utf-8") as f:
+                        conn.executescript(f.read())
     else:
-        # For PG, we might want to run schema_pg.sql if tables don't exist
-        # But usually in production we use migrations.
-        # For this prototype, we'll just check if a table exists.
-        with db.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
-            exists = cur.fetchone()['exists']
-            if not exists:
-                schema_path = BASE_DIR / "schema_pg.sql"
-                with open(schema_path, "r", encoding="utf-8") as f:
-                    cur.execute(f.read())
+        # For PG, check if tables exist
+        try:
+            with db.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+                exists = cur.fetchone()['exists']
+                if not exists:
+                    schema_path = BASE_DIR / "schema_pg.sql"
+                    if schema_path.exists():
+                        with open(schema_path, "r", encoding="utf-8") as f:
+                            cur.execute(f.read())
+                    else:
+                        print(f"Warning: Schema file not found at {schema_path}")
+        except Exception as e:
+            print(f"Database connection/init error: {e}")
 
 init_db()
 
