@@ -166,9 +166,6 @@ def login():
     if not user["is_verified"]:
         return jsonify({"error": "Please verify your email before logging in. Check your console for the link."}), 403
 
-    if not user["is_verified"]:
-        return jsonify({"error": "Please verify your email before logging in. Check your console for the link."}), 403
-
     full_name = f"{user['first_name']} {user['middle_name']} {user['last_name']}".replace("  ", " ").strip()
     return jsonify(
         {
