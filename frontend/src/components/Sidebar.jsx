@@ -135,11 +135,11 @@ const Sidebar = ({ user, onLogout }) => {
               fontSize: "1.3rem"
             }}
           >
-            {user.name.charAt(0).toUpperCase()}
+            {user?.name?.charAt(0).toUpperCase() || "U"}
           </Avatar>
           <Box sx={{ minWidth: 0, flex: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-              {user.name}
+              {user?.name || "User"}
             </Typography>
             <Typography 
               variant="caption" 

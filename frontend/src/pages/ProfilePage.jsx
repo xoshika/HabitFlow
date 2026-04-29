@@ -17,8 +17,8 @@ const ProfilePage = ({ user }) => {
         Profile
       </Typography>
       <Stack spacing={1}>
-        <Typography>Name: {profile?.name ?? user.name}</Typography>
-        <Typography>Email: {profile?.email ?? user.email}</Typography>
+        <Typography>Name: {profile?.name ?? user?.name}</Typography>
+        <Typography>Email: {profile?.email ?? user?.email}</Typography>
         <Typography>
           Total Habits: {profile?.stats?.total_habits ?? 0}
         </Typography>
