@@ -215,8 +215,10 @@ def signup():
     # Send verification email
     try:
         # Determine base URL for verification link
-        if os.getenv("VERCEL_URL"):
-            base_url = f"https://{os.getenv('VERCEL_URL')}"
+        vercel_url = os.getenv("VERCEL_URL")
+        if vercel_url:
+            # Vercel doesn't include https:// in the variable
+            base_url = f"https://{vercel_url}"
         else:
             base_url = "http://localhost:5173"
 
