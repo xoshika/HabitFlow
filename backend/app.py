@@ -1,9 +1,11 @@
 import os
+import uuid
 from datetime import datetime, date
 from pathlib import Path
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from flask_mail import Mail, Message
 import sqlite3
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -17,6 +19,16 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR}/habit_tracker.db
 
 app = Flask(__name__)
 CORS(app)
+
+# Email Configuration
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True") == "True"
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
+
+mail = Mail(app)
 
 class Database:
     def __init__(self, url):
@@ -113,7 +125,7 @@ def login():
     conn = db.get_connection()
     try:
         cur = db.execute(conn, 
-            "SELECT id, first_name, middle_name, last_name, email FROM users WHERE email = ? AND password = ?",
+            "SELECT id, first_name, middle_name, last_name, email, is_verified FROM users WHERE email = ? AND password = ?",
             (email, password),
         )
         user = db.fetchone(cur)
@@ -122,6 +134,9 @@ def login():
 
     if not user:
         return jsonify({"error": "Invalid credentials"}), 401
+
+    if not user["is_verified"]:
+        return jsonify({"error": "Please verify your email before logging in. Check your console for the link."}), 403
 
     full_name = f"{user['first_name']} {user['middle_name']} {user['last_name']}".replace("  ", " ").strip()
     return jsonify(
@@ -150,6 +165,7 @@ def signup():
     if not first_name or not last_name or not email or not password:
         return jsonify({"error": "First name, last name, email, and password are required"}), 400
 
+    token = uuid.uuid4().hex
     conn = db.get_connection()
     try:
         cur = db.execute(conn, "SELECT id FROM users WHERE email = ?", (email,))
@@ -157,19 +173,56 @@ def signup():
         if existing:
             return jsonify({"error": "Email is already registered"}), 409
 
-        sql = "INSERT INTO users (first_name, middle_name, last_name, email, password) VALUES (?, ?, ?, ?, ?)"
+        sql = "INSERT INTO users (first_name, middle_name, last_name, email, password, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, 0, ?)"
         if db.is_pg:
             sql += " RETURNING id"
         
-        cur = db.execute(conn, sql, (first_name, middle_name, last_name, email, password))
+        cur = db.execute(conn, sql, (first_name, middle_name, last_name, email, password, token))
         if not db.is_pg:
             conn.commit()
         user_id = db.get_lastrowid(cur)
     finally:
         conn.close()
 
+    # Send verification email
+    try:
+        verify_url = f"http://localhost:5173/verify?token={token}"
+        msg = Message(
+            "Verify your HabitFlow account",
+            recipients=[email],
+            body=f"Hi {first_name},\n\nWelcome to HabitFlow! Please verify your email by clicking the link below:\n\n{verify_url}\n\nIf you did not create an account, please ignore this email."
+        )
+        mail.send(msg)
+        print(f"Verification email sent to {email}")
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        # We don't return 500 here to avoid blocking signup if mail fails in dev,
+        # but in production you might want to handle this more strictly.
+
     full_name = f"{first_name} {middle_name} {last_name}".replace("  ", " ").strip()
     return jsonify({"user": {"id": user_id, "first_name": first_name, "middle_name": middle_name, "last_name": last_name, "name": full_name, "email": email}}), 201
+
+
+@app.get("/api/auth/verify")
+def verify():
+    token = request.args.get("token")
+    if not token:
+        return jsonify({"error": "Token is required"}), 400
+    
+    conn = db.get_connection()
+    try:
+        cur = db.execute(conn, "SELECT id FROM users WHERE verification_token = ?", (token,))
+        user = db.fetchone(cur)
+        if not user:
+            return jsonify({"error": "Invalid or expired token"}), 400
+        
+        db.execute(conn, "UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?", (user["id"],))
+        if not db.is_pg:
+            conn.commit()
+    finally:
+        conn.close()
+    
+    return jsonify({"message": "Email verified successfully! You can now log in."})
 
 
 @app.get("/api/habit-categories")

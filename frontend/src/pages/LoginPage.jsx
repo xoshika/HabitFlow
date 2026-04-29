@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
+import Alert from "@mui/material/Alert";
 
 const LoginPage = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("signin");
@@ -16,12 +17,14 @@ const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
     try {
       const endpoint =
         authMode === "signup" ? "/api/auth/signup" : "/api/auth/login";
@@ -36,7 +39,18 @@ const LoginPage = ({ onLogin }) => {
             }
           : { email, password };
       const res = await axios.post(endpoint, payload);
-      onLogin(res.data.user);
+      
+      if (authMode === "signup") {
+        setSuccess("Account created! Please check your inbox for the verification link to activate your account.");
+        setFirstName("");
+        setMiddleName("");
+        setLastName("");
+        setEmail("");
+        setPassword("");
+        setAuthMode("signin");
+      } else {
+        onLogin(res.data.user);
+      }
     } catch (err) {
       setError(err?.response?.data?.error || "Request failed");
     } finally {
@@ -102,6 +116,11 @@ const LoginPage = ({ onLogin }) => {
               fullWidth
               required
             />
+            {success && (
+              <Alert severity="success" variant="outlined">
+                {success}
+              </Alert>
+            )}
             {error && (
               <Typography color="error" variant="body2">
                 {error}
@@ -126,6 +145,7 @@ const LoginPage = ({ onLogin }) => {
               variant="text"
               onClick={() => {
                 setError(null);
+                setSuccess(null);
                 setAuthMode(authMode === "signup" ? "signin" : "signup");
               }}
             >

@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     last_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
+    is_verified INTEGER NOT NULL DEFAULT 0,
+    verification_token TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

@@ -8,6 +8,7 @@ import HabitsPage from "./pages/HabitsPage";
 import ReportsPage from "./pages/ReportsPage";
 import ProfilePage from "./pages/ProfilePage";
 import Sidebar from "./components/Sidebar";
+import VerifyPage from "./pages/VerifyPage";
 
 function App() {
   const [user, setUser] = useState(() => {
@@ -24,7 +25,12 @@ function App() {
   }, [user]);
 
   if (!user) {
-    return <LoginPage onLogin={setUser} />;
+    return (
+      <Routes>
+        <Route path="/verify" element={<VerifyPage />} />
+        <Route path="*" element={<LoginPage onLogin={setUser} />} />
+      </Routes>
+    );
   }
 
   return (
