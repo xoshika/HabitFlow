@@ -10,9 +10,11 @@ import Box from "@mui/material/Box";
 
 const LoginPage = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("signin");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("password123");
+  const [firstName, setFirstName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,13 @@ const LoginPage = ({ onLogin }) => {
         authMode === "signup" ? "/api/auth/signup" : "/api/auth/login";
       const payload =
         authMode === "signup"
-          ? { name: name.trim(), email, password }
+          ? {
+              first_name: firstName.trim(),
+              middle_name: middleName.trim(),
+              last_name: lastName.trim(),
+              email,
+              password,
+            }
           : { email, password };
       const res = await axios.post(endpoint, payload);
       onLogin(res.data.user);
@@ -55,13 +63,28 @@ const LoginPage = ({ onLogin }) => {
         <Box component="form" onSubmit={handleSubmit}>
           <Stack spacing={2}>
             {authMode === "signup" && (
-              <TextField
-                label="Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                fullWidth
-                required
-              />
+              <>
+                <TextField
+                  label="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  fullWidth
+                  required
+                />
+                <TextField
+                  label="Middle Name"
+                  value={middleName}
+                  onChange={(e) => setMiddleName(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  fullWidth
+                  required
+                />
+              </>
             )}
             <TextField
               label="Email"

@@ -3,7 +3,9 @@ PRAGMA foreign_keys = ON;
 -- 1) users table
 CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    middle_name TEXT,
+    last_name TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -45,8 +47,8 @@ CREATE TABLE IF NOT EXISTS habit_goals (
 );
 
 -- Seed demo data for quick testing
-INSERT OR IGNORE INTO users (id, name, email, password)
-VALUES (1, 'Demo User', 'demo@example.com', 'password123');
+INSERT OR IGNORE INTO users (id, first_name, middle_name, last_name, email, password)
+VALUES (1, 'Demo', '', 'User', 'demo@example.com', 'password123');
 
 INSERT OR IGNORE INTO habit_categories (id, name)
 VALUES

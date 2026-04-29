@@ -141,7 +141,7 @@ def login():
     conn = db.get_connection()
     try:
         cur = db.execute(conn, 
-            "SELECT id, name, email FROM users WHERE email = ? AND password = ?",
+            "SELECT id, first_name, middle_name, last_name, email FROM users WHERE email = ? AND password = ?",
             (email, password),
         )
         user = db.fetchone(cur)
@@ -151,11 +151,15 @@ def login():
     if not user:
         return jsonify({"error": "Invalid credentials"}), 401
 
+    full_name = f"{user['first_name']} {user['middle_name']} {user['last_name']}".replace("  ", " ").strip()
     return jsonify(
         {
             "user": {
                 "id": user["id"],
-                "name": user["name"],
+                "first_name": user["first_name"],
+                "middle_name": user["middle_name"],
+                "last_name": user["last_name"],
+                "name": full_name,
                 "email": user["email"],
             }
         }
@@ -165,12 +169,14 @@ def login():
 @app.post("/api/auth/signup")
 def signup():
     data = request.get_json() or {}
-    name = (data.get("name") or "").strip()
+    first_name = (data.get("first_name") or "").strip()
+    middle_name = (data.get("middle_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
     email = (data.get("email") or "").strip().lower()
     password = data.get("password") or ""
 
-    if not name or not email or not password:
-        return jsonify({"error": "Name, email, and password are required"}), 400
+    if not first_name or not last_name or not email or not password:
+        return jsonify({"error": "First name, last name, email, and password are required"}), 400
 
     conn = db.get_connection()
     try:
@@ -179,18 +185,19 @@ def signup():
         if existing:
             return jsonify({"error": "Email is already registered"}), 409
 
-        sql = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)"
+        sql = "INSERT INTO users (first_name, middle_name, last_name, email, password) VALUES (?, ?, ?, ?, ?)"
         if db.is_pg:
             sql += " RETURNING id"
         
-        cur = db.execute(conn, sql, (name, email, password))
+        cur = db.execute(conn, sql, (first_name, middle_name, last_name, email, password))
         if not db.is_pg:
             conn.commit()
         user_id = db.get_lastrowid(cur)
     finally:
         conn.close()
 
-    return jsonify({"user": {"id": user_id, "name": name, "email": email}}), 201
+    full_name = f"{first_name} {middle_name} {last_name}".replace("  ", " ").strip()
+    return jsonify({"user": {"id": user_id, "first_name": first_name, "middle_name": middle_name, "last_name": last_name, "name": full_name, "email": email}}), 201
 
 
 @app.get("/api/habit-categories")
@@ -235,7 +242,7 @@ def get_profile(user_id: int):
     conn = db.get_connection()
     try:
         cur = db.execute(conn, 
-            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            "SELECT id, first_name, middle_name, last_name, email, created_at FROM users WHERE id = ?",
             (user_id,),
         )
         user = db.fetchone(cur)
@@ -258,10 +265,14 @@ def get_profile(user_id: int):
     finally:
         conn.close()
 
+    full_name = f"{user['first_name']} {user['middle_name']} {user['last_name']}".replace("  ", " ").strip()
     return jsonify(
         {
             "id": user["id"],
-            "name": user["name"],
+            "first_name": user["first_name"],
+            "middle_name": user["middle_name"],
+            "last_name": user["last_name"],
+            "name": full_name,
             "email": user["email"],
             "created_at": user["created_at"],
             "stats": {
