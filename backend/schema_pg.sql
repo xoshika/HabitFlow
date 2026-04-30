@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS habit_goals (
 );
 
 -- Seed demo data
-INSERT INTO users (id, first_name, middle_name, last_name, email, password)
-VALUES (1, 'Demo', '', 'User', 'demo@example.com', 'password123')
+INSERT INTO users (id, first_name, middle_name, last_name, email, password, is_verified)
+VALUES (1, 'Demo', '', 'User', 'demo@example.com', 'password123', 1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO habit_categories (id, name)

@@ -32,12 +32,24 @@ mail = Mail(app)
 
 class Database:
     def __init__(self, url):
+        if not url:
+            # Fallback for local dev if DATABASE_URL is missing
+            url = f"sqlite:///{BASE_DIR}/habit_tracker.db"
+        
+        # Ensure SQLite path is absolute relative to BASE_DIR if it's relative
+        if url.startswith("sqlite:///") and not url.startswith("sqlite:////") and ":" not in url[10:12]:
+            db_filename = url.replace("sqlite:///", "")
+            if not Path(db_filename).is_absolute():
+                url = f"sqlite:///{BASE_DIR / db_filename}"
+        
         self.url = url
         self.is_pg = url.startswith("postgresql://") or url.startswith("postgres://")
 
     def get_connection(self):
         if self.is_pg:
-            conn = psycopg2.connect(self.url, cursor_factory=RealDictCursor)
+            # Fix for Render/Neon postgres URLs that start with postgres://
+            updated_url = self.url.replace("postgres://", "postgresql://", 1)
+            conn = psycopg2.connect(updated_url, cursor_factory=RealDictCursor)
             conn.autocommit = True
             return conn
         else:
@@ -94,27 +106,58 @@ class Database:
 db = Database(DATABASE_URL)
 
 def init_db():
-    if not db.is_pg:
-        db_path = Path(DATABASE_URL.replace("sqlite:///", ""))
-        if not db_path.exists():
+    try:
+        if not db.is_pg:
+            db_path = Path(db.url.replace("sqlite:///", ""))
+            if not db_path.exists():
+                with db.get_connection() as conn:
+                    schema_path = BASE_DIR / "schema.sql"
+                    if schema_path.exists():
+                        with open(schema_path, "r", encoding="utf-8") as f:
+                            conn.executescript(f.read())
+                    else:
+                        print(f"Warning: Schema file not found at {schema_path}")
+        else:
+            # For PG, check if tables exist
             with db.get_connection() as conn:
-                schema_path = BASE_DIR / "schema.sql"
-                with open(schema_path, "r", encoding="utf-8") as f:
-                    conn.executescript(f.read())
-    else:
-        # For PG, we might want to run schema_pg.sql if tables don't exist
-        # But usually in production we use migrations.
-        # For this prototype, we'll just check if a table exists.
-        with db.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
-            exists = cur.fetchone()['exists']
-            if not exists:
-                schema_path = BASE_DIR / "schema_pg.sql"
-                with open(schema_path, "r", encoding="utf-8") as f:
-                    cur.execute(f.read())
+                cur = conn.cursor()
+                cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+                exists = cur.fetchone()['exists']
+                if not exists:
+                    schema_path = BASE_DIR / "schema_pg.sql"
+                    if schema_path.exists():
+                        with open(schema_path, "r", encoding="utf-8") as f:
+                            cur.execute(f.read())
+                    else:
+                        print(f"Warning: Schema file not found at {schema_path}")
+    except Exception as e:
+        print(f"Database connection/init error: {e}")
 
 init_db()
+
+@app.route("/api/health")
+def health():
+    return jsonify({
+        "status": "healthy",
+        "database": "connected" if db.is_pg else "sqlite (local)",
+        "env": "production" if os.getenv("VERCEL") else "development",
+        "db_url": db.url.split("@")[-1] if "@" in db.url else db.url # Hide credentials
+    })
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    # Pass through HTTP errors
+    if hasattr(e, "code"):
+        return jsonify({"error": str(e)}), e.code
+    # Handle non-HTTP errors
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"Unhandled Exception: {e}\n{error_details}")
+    return jsonify({
+        "error": "Internal Server Error", 
+        "details": str(e),
+        "trace": error_details if not os.getenv("VERCEL") else "Check server logs"
+    }), 500
 
 @app.post("/api/auth/login")
 def login():
