@@ -12,14 +12,18 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+load_dotenv(override=True)
 
 # Vercel path handling
 BASE_DIR = Path(__file__).resolve().parent
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    DATABASE_URL = f"sqlite:///{BASE_DIR}/habit_tracker.db"
 
 app = Flask(__name__)
 CORS(app)
+
+print(f" * Using database: {'PostgreSQL' if DATABASE_URL.startswith(('postgres://', 'postgresql://')) else 'SQLite'}")
 
 # Email Configuration
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")

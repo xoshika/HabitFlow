@@ -8,6 +8,10 @@ import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Box from "@mui/material/Box";
 import Alert from "@mui/material/Alert";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 const LoginPage = ({ onLogin }) => {
   const [authMode, setAuthMode] = useState("signin");
@@ -16,6 +20,7 @@ const LoginPage = ({ onLogin }) => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -47,6 +52,7 @@ const LoginPage = ({ onLogin }) => {
         setLastName("");
         setEmail("");
         setPassword("");
+        setShowPassword(false);
         setAuthMode("signin");
       } else {
         onLogin(res.data.user);
@@ -110,11 +116,27 @@ const LoginPage = ({ onLogin }) => {
             />
             <TextField
               label="Password"
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               fullWidth
               required
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        onMouseDown={(e) => e.preventDefault()}
+                        edge="end"
+                      >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
             />
             {success && (
               <Alert severity="success" variant="outlined">
@@ -146,6 +168,7 @@ const LoginPage = ({ onLogin }) => {
               onClick={() => {
                 setError(null);
                 setSuccess(null);
+                setShowPassword(false);
                 setAuthMode(authMode === "signup" ? "signin" : "signup");
               }}
             >
