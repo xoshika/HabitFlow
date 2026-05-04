@@ -150,9 +150,9 @@ const DashboardPage = ({ user }) => {
                       background: (theme) =>
                         theme.palette.mode === "dark"
                           ? "linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)"
-                          : "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+                          : "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
                     }}
-                  >
+                  > 
                     Complete
                   </Button>
                 </ListItemSecondaryAction>

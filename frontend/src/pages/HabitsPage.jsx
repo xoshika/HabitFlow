@@ -550,11 +550,17 @@ const HabitsPage = ({ user }) => {
                       background: (theme) =>
                         theme.palette.mode === "dark"
                           ? "linear-gradient(135deg, #60a5fa 0%, #2563eb 100%)"
-                          : "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
-                      boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+                          : "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                      boxShadow: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "0 4px 12px rgba(37, 99, 235, 0.2)"
+                          : "0 4px 12px rgba(34, 197, 94, 0.2)",
                       "&:hover": {
                         transform: "scale(1.05)",
-                        boxShadow: "0 6px 16px rgba(37, 99, 235, 0.3)"
+                        boxShadow: (theme) =>
+                          theme.palette.mode === "dark"
+                            ? "0 6px 16px rgba(37, 99, 235, 0.3)"
+                            : "0 6px 16px rgba(34, 197, 94, 0.3)"
                       }
                     }}
                   >
