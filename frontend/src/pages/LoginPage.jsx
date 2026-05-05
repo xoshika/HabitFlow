@@ -20,7 +20,9 @@ const LoginPage = ({ onLogin }) => {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -30,6 +32,13 @@ const LoginPage = ({ onLogin }) => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+
+    if (authMode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
     try {
       const endpoint =
         authMode === "signup" ? "/api/auth/signup" : "/api/auth/login";
@@ -52,7 +61,9 @@ const LoginPage = ({ onLogin }) => {
         setLastName("");
         setEmail("");
         setPassword("");
+        setConfirmPassword("");
         setShowPassword(false);
+        setShowConfirmPassword(false);
         setAuthMode("signin");
       } else {
         onLogin(res.data.user);
@@ -138,6 +149,32 @@ const LoginPage = ({ onLogin }) => {
                 },
               }}
             />
+            {authMode === "signup" && (
+              <TextField
+                label="Confirm Password"
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                fullWidth
+                required
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle confirm password visibility"
+                          onClick={() => setShowConfirmPassword((prev) => !prev)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            )}
             {success && (
               <Alert severity="success" variant="outlined">
                 {success}
@@ -169,6 +206,9 @@ const LoginPage = ({ onLogin }) => {
                 setError(null);
                 setSuccess(null);
                 setShowPassword(false);
+                setShowConfirmPassword(false);
+                setPassword("");
+                setConfirmPassword("");
                 setAuthMode(authMode === "signup" ? "signin" : "signup");
               }}
             >
